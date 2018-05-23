@@ -18,6 +18,47 @@ function handleQuery(params) {
   });
   return query;
 }
+// 计算域名
+function cacluteHttps() {
+  const base = ['a', 'b', 'c', 'd', 'e', 'g', 'i', 'j', 'k', 'n', 'o', 'p', 'q', 'r', 't', 'u', 'v', 'w', 'y', 'z'];
+  const del = ['f', 'h', 'l', 'm', 's', 'x'];
+  /**
+   * 字符串
+   * str 字符串
+   * type 类型: 1,小写 2,大写 3,首字母
+   */
+  function toLowerOrUpper(str, type) {
+    const temp1 = str.split('');
+    switch (type) {
+      case 1:
+        return str.toLowerCase();
+      case 2:
+        return str.toUpperCase();
+      case 3:
+        const firstChart = temp1[0];
+        const other = temp1.filter((a, index) => {return index > 0;});
+        return `${firstChart.toUpperCase()}${other.join('')}`;
+      default:
+        return str;
+    }
+  };
+  function loop(arr){
+    let result = [];
+    for(let idx = 0; idx < arr.length; idx ++) {
+      for(let idy = 0; idy < arr.length; idy ++) {
+        for(let idz = 0; idz < arr.length; idz ++) {
+          let tempArr = [];
+          tempArr.push(arr[idx]);
+          tempArr.push(arr[idy]);
+          tempArr.push(arr[idz]);
+          result.push(tempArr.join(''));
+        }
+      }
+    }
+    return result;
+  };
+  return loop(base);
+};
 // 时间函数
 function getDate() {
   const date = new Date();
@@ -55,7 +96,6 @@ const queryParams = {
   pn: 0,
   rn: 30
 };
-
 // 渲染图片
 const renderImage = (data) => {
   let html = `<h2>共计 : ${data.length - 1}张图片</h2>`;
@@ -67,6 +107,27 @@ const renderImage = (data) => {
   let $ = cheerio.load(`<div class="img">${html}<div>`);
   return $('.img').html();
 };
+
+// 渲染域名
+const renderWWW = (data) => {
+  let html = `<h2>共计 : ${data.length - 1}个域名</h2>`;
+  data.map((item) => {
+    if (item) {
+      let isPass = false;
+      http.get(`https://www.${item}.com`, (resp) => {
+        resp.on('end', function () {
+          isPass = true;
+        })
+      }).on('error', () => {
+        isPass = false;
+      });
+      html += `<p style=line-height: 20px; color: ${!isPass ? 'red': 'green'}"><a href="http://www.${item}.com" target="_blank">www.${item}.com</a></p>`;
+    }
+  });
+  let $ = cheerio.load(`<div class="www">${html}<div>`);
+  return $('.www').html();
+};
+
 app.get('/', function (req, res) {
   const reptileUrl = "https://www.jianshu.com/";
   request(reptileUrl, function (error, response, body) {
@@ -144,6 +205,20 @@ app.get('/image', function (req, res) {
   }).on('error', () =>
     console.log('获取数据出错!')
   );
+})
+
+app.get('/abc', function (req, res) {
+  const data = cacluteHttps();
+  res.send(renderWWW(data));
+  const date = getDate();
+  // 生成数据
+  fs.writeFile(__dirname + `/data/abc/www${date}.json`, JSON.stringify({
+    status: 0,
+    data: data
+  }), function (err) {
+    if (err) throw err;
+  });
+  console.log('写入完成');
 })
 const port = 3333;
 const openUrl = `http://localhost:${port}`;
